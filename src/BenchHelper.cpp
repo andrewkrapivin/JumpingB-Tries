@@ -1,6 +1,6 @@
-#include "BenchHelper.hpp"
 #include <chrono>
 #include <iostream>
+#include "BenchHelper.hpp"
 
 using namespace std;
 

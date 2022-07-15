@@ -13,26 +13,40 @@ namespace vEB_BTree {
             }
 
         public:
-            ULLongByteString(uint64_t x): x(x) {}
+            constexpr ULLongByteString(ULLongType x): x(x) {}
 
-            void maskOffBigBytes(size_t numBytes) {
-                x &= - (((ULLongType)1ull) << byteToBit(numBytes));
+            void constexpr maskOffBigBytes(size_t numBytes) {
+                x &= -(((ULLongType)1ull) << byteToBit(numBytes));
             }
-            void maskOffSmallBytes(size_t numBytes) {
+            void constexpr maskOffSmallBytes(size_t numBytes) {
                 x &= (((ULLongType)1ull) << byteToBit(numBytes)) - 1;
             }
 
-            operator uint64_t&() {return x;}
-            operator uint64_t() const {return x;} //I need to understand this whole const stuff cause from what I understand its not even always respected like idk. Cause right now tbh it just seems like duplicated code for absolutely no reason
+            constexpr operator ULLongType&() {return x;}
+            constexpr operator ULLongType() const {return x;} //I need to understand this whole const stuff cause from what I understand its not even always respected like idk. Cause right now tbh it just seems like duplicated code for absolutely no reason
 
-            ByteType getByte(size_t pos) {
+            ByteType constexpr getByte(size_t pos) {
                 ULLongType mask = getByteMask(pos, pos+1);
                 return (x & mask) >> byteToBit(pos);
             }
 
-            void setByte(size_t pos, ByteType byte) {
+            ULLongType constexpr getPrefix(size_t numBytes) {
+                ULLongByteString y{x};
+                y.maskOffBigBytes(numBytes);
+                return y;
+            }
+
+            void constexpr setByte(size_t pos, ByteType byte) {
                 ULLongType mask = ~getByteMask(byte, byte+1);
                 x = (x & mask) | (((ULLongType)byte) << byteToBit(pos));
+            }
+
+            static constexpr ULLongType getPrefix(ULLongType x, size_t numBytes) {
+                return ULLongByteString{x}.getPrefix(numBytes);
+            }
+
+            static constexpr bool comparePrefixes(ULLongType x, ULLongType y, size_t sizePrefix) {
+                return getPrefix(x, sizePrefix) == getPrefix(y, sizePrefix);
             }
 
             // TODO: get some c++ practice by implementing this! Should make a reference class wrapper that then does the bit operations

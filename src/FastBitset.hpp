@@ -1,9 +1,9 @@
 #ifndef FAST_BITSET_HPP
 #define FAST_BITSET_HPP
 
-#include "vEBTypes.hpp"
 #include <array>
 #include <ranges>
+#include "vEBTypes.hpp"
 
 //Sidenote: why are c++ unions terrible? Why is it not possible to just use it as a form of simple effectively bit casting for two different expressions of the same underlying data? Why the ridiculous and vague active member nonsense?
 //I want to just represent these bits as either longs or chars, for example, or as bitset since sometimes that is nice but not supporting parallel operations
@@ -19,9 +19,9 @@ namespace vEB_BTree {
             FastBitset();
             void clearBigBits(size_t startBit); //clears bits [startBit, NumBits). Not sure if should include startBit, and its a bit easier to code including it so for now that's how it is
             void clearSmallBits(size_t startBit); //clears bits [0, startBit]
-            int findSmallestBit(); //essentially extended _tzcnt_u64. Returns location of the smallest bit
-            int findLargestBit(); //essentially extended _lzcnt_u64 except also with arithmetic to tell you which bit in big endian order
-            bool empty();
+            int findSmallestBit() const; //essentially extended _tzcnt_u64. Returns location of the smallest bit
+            int findLargestBit() const; //essentially extended _lzcnt_u64 except also with arithmetic to tell you which bit in big endian order
+            bool empty() const;
             void setBit(size_t bit);
             void clearBit(size_t bit);
 
@@ -54,7 +54,7 @@ namespace vEB_BTree {
 
     //Just implement it in simple bit scan version? Cause not being the most efficient really with this anyways
     template<size_t NumBits>
-    int FastBitset<NumBits>::findSmallestBit() {
+    int FastBitset<NumBits>::findSmallestBit() const {
         uint64_t offset{0};
         for(ULLongType l: bits) {
             if (l != 0) {
@@ -63,10 +63,12 @@ namespace vEB_BTree {
             }
             offset += BitsInULLong;
         }
+
+        return -1;
     }
     
     template<size_t NumBits>
-    int FastBitset<NumBits>::findLargestBit() {
+    int FastBitset<NumBits>::findLargestBit() const {
         uint64_t offset{NumULLongs*BitsInULLong-1};
         for(ULLongType l: bits | std::views::reverse) {
             if (l != 0) {
@@ -75,10 +77,12 @@ namespace vEB_BTree {
             }
             offset -= BitsInULLong;
         }
+        
+        return -1;
     }
 
     template<size_t NumBits>
-    bool FastBitset<NumBits>::empty() {
+    bool FastBitset<NumBits>::empty() const {
         bool notEmpty = false;
         for(ULLongType l: bits) {
             notEmpty = notEmpty || (l != 0);

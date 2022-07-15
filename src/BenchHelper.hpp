@@ -1,3 +1,6 @@
+#ifndef BENCH_HELPER_HPP
+#define BENCH_HELPER_HPP
+
 #include <random>
 #include <functional>
 #include <string>
@@ -18,3 +21,5 @@ class BenchHelper {
         void timeThreadedFunction(std::vector<std::function<void()>>& functions, const std::string& name);
         void addFunctionForThreadTest(std::function<void()> F);
 };
+
+#endif
