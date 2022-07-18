@@ -15,11 +15,14 @@ namespace vEB_BTree {
         public:
             constexpr ULLongByteString(ULLongType x): x(x) {}
 
-            void constexpr maskOffBigBytes(size_t numBytes) {
-                x &= -(((ULLongType)1ull) << byteToBit(numBytes));
+            //Keeps only the bytes [0, endByte)
+            void constexpr keepBytesUntil(size_t endByte) {
+                x &= -(((ULLongType)1ull) << byteToBit(endByte));
             }
-            void constexpr maskOffSmallBytes(size_t numBytes) {
-                x &= (((ULLongType)1ull) << byteToBit(numBytes)) - 1;
+
+            //Keeps only the bytes [endByte, BytesInULLong)
+            void constexpr keepBytesStartingWith(size_t startByte) {
+                x &= (((ULLongType)1ull) << byteToBit(startByte)) - 1;
             }
 
             constexpr operator ULLongType&() {return x;}
@@ -32,7 +35,7 @@ namespace vEB_BTree {
 
             ULLongType constexpr getPrefix(size_t numBytes) {
                 ULLongByteString y{x};
-                y.maskOffBigBytes(numBytes);
+                y.keepBytesUntil(numBytes);
                 return y;
             }
 

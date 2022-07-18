@@ -17,6 +17,7 @@ namespace vEB_BTree {
 
         public:
             FastBitset();
+            FastBitset(size_t bitToSet);
             void clearBigBits(size_t startBit); //clears bits [startBit, NumBits). Not sure if should include startBit, and its a bit easier to code including it so for now that's how it is
             void clearSmallBits(size_t startBit); //clears bits [0, startBit]
             int findSmallestBit() const; //essentially extended _tzcnt_u64. Returns location of the smallest bit
@@ -24,11 +25,15 @@ namespace vEB_BTree {
             bool empty() const;
             void setBit(size_t bit);
             void clearBit(size_t bit);
+            bool getBit(size_t pos) const;
 
     };
 
     template<size_t NumBits>
     FastBitset<NumBits>::FastBitset() {}
+
+    template<size_t NumBits>
+    FastBitset<NumBits>::FastBitset(size_t bitToSet) {setBit(bitToSet);}
     
     template<size_t NumBits>
     void FastBitset<NumBits>::clearBigBits(size_t startBit) {
@@ -102,6 +107,13 @@ namespace vEB_BTree {
         size_t posULLong = bit / BitsInULLong;
         size_t bitOffset = bit % BitsInULLong;
         bits[posULLong] &= ~(((ULLongType)1) << bitOffset);
+    }
+
+    template<size_t NumBits>
+    bool FastBitset<NumBits>::getBit(size_t pos) const {
+        size_t posULLong = pos / BitsInULLong;
+        size_t bitOffset = pos % BitsInULLong;
+        return bits[posULLong] & (((ULLongType)1) << bitOffset);
     }
 }
 

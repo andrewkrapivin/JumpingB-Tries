@@ -23,6 +23,8 @@ namespace vEB_BTree {
         // std::array<uint64_t, 4> childMask; //Wait lol why did I make this of type keyType? This should be uniform as uint64_t
         FastBitset<256> childMask;
         //To differentiate an empty bucket from one that holds key equal to zero, we require that childMask not be empty, since there is always either a successor or its the end and the values of childMask don't matter anyways.
+        HashBucket();
+        HashBucket(KeyValPair kvp, size_t dep);
     };
 
     const HashBucket EmptyBucket{};
@@ -52,21 +54,32 @@ namespace vEB_BTree {
             };
 
             //TODO: not redo computation? Cause there's a lot of functions assuming that input is not properly masked and so multiple instances of the same masking. For now whatever but for the future.
+            size_t numBits;
+            size_t sizeTables;
             std::array<ModdedBasicHashFunction, 2> hashFunctions;
             std::array<std::array<std::vector<HashBucket>, KeySize+1>, 2> tables; //Clearly this is inneficient because of several different things, like being very space inneficient, esp since the earlier layers don't use much, but well this approach is rather space inneficient anyways so whatever
             //But well at least compute the hash exactly once & don't need to worry about doing anything custom anymore
             bool testEntry(const HashBucket& entry, KeyType key, size_t depth) const; //tests if entry actually holds the key
+            std::array<std::reference_wrapper<HashBucket>, 2> loadPossibleEntries(KeyType key, size_t depth);
             std::optional<std::reference_wrapper<HashBucket>> loadDesiredEntry(KeyType key, size_t depth); //Here reference actually makes sense, but then I went ahead and made everything else a reference, which I guess is fine but just like why lol
             std::optional<std::reference_wrapper<HashBucket>> loadDesiredEntry(KeyType key, size_t depth, std::array<std::reference_wrapper<HashBucket>, 2> entries);
+            std::array<std::reference_wrapper<const HashBucket>, 2> loadPossibleEntries(KeyType key, size_t depth) const;
             std::optional<std::reference_wrapper<const HashBucket>> loadDesiredEntry(KeyType key, size_t depth) const;
             std::optional<std::reference_wrapper<const HashBucket>> loadDesiredEntry(KeyType key, size_t depth, std::array<std::reference_wrapper<const HashBucket>, 2> entries) const;
-            std::optional<std::reference_wrapper<const HashBucket>> successorEntry(const HashBucket& entry, ByteType pos, size_t depth) const;
+            std::vector<std::array<std::reference_wrapper<HashBucket>, 2>> loadAllEntries(KeyType key);
             std::vector<std::array<std::reference_wrapper<const HashBucket>, 2>> loadAllEntries(KeyType key) const; //really annoying that can't make this an array because it tries calling default constructor but there is no such thing there
+            std::optional<std::reference_wrapper<const HashBucket>> successorEntry(const HashBucket& entry, ByteType pos, size_t depth) const;
+            //Assumes that the prefix up till now matches, then asks if the next byte is present in the childmask. The name is somewhat bad I think
+            bool hasKeyAsChild(const HashBucket& entry, KeyType key, size_t depth) const;
             //Reply to that: wait why did I make these use references anyways? Why not just return a const HashBucket? Change this?
+            void cuckooInsertEntry(KeyValPair kvp, size_t depth);
+            void insertKeyToEntry(HashBucket& entry, KeyValPair kvp, size_t depth);
         
         public:
             HashTable(size_t size);
+            //Maybe make insert tell you if the key was already there & also have an option to say whether you want to overwrite existing value
             void insert(KeyValPair kvp);
+            void deleteKey(KeyType key);
             std::optional<ValType> pointQuery(KeyType key) const;
             std::optional<KeyValPair> successorQuery(KeyType key) const;
             // std::optional<KeyValPair> predecessorQuery(KeyType key);
