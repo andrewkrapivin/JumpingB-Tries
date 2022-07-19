@@ -23,7 +23,7 @@ int main(int argc, char** argv){
     vector<KeyValPair> randomList;
     uniform_int_distribution<uint64_t> dist(0, ULLONG_MAX);
     for(size_t i{0}; i < testSize; i++) {
-        randomList.emplace_back(i, dist(generator));
+        randomList.emplace_back(dist(generator), dist(generator));
     }
     shuffle(randomList.begin(), randomList.end(), generator);
 
@@ -55,9 +55,9 @@ int main(int argc, char** argv){
         bench.timeFunction([&] ()-> void {
             for(size_t i{0}; i < testSize-1; i++) {
                 auto queryResult = vEBTree.successorQuery(randomList[i].key);
-                // assert(queryResult.has_value());
-                // // cout << "hh: " << randomList[i].key << ' ' << queryResult->key << ' ' << randomList[i+1].key << endl;
-                // assert(queryResult->key == randomList[i+1].key);
+                assert(queryResult.has_value());
+                // cout << "hh: " << randomList[i].key << ' ' << queryResult->key << ' ' << randomList[i+1].key << endl;
+                assert(queryResult->key == randomList[i+1].key);
             }
         }, "successor query");
     // }

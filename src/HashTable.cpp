@@ -158,6 +158,8 @@ namespace vEB_BTree {
             // std::cout << "entryIndex1: " << entryIndex1 << ", 2: " << entryIndex2 << std::endl;
             assert(dep < tables[0].size() && entryIndex1 < tables[0][dep].size() && entryIndex2 < tables[1][dep].size());
             entries.push_back({&tables[0][dep][entryIndex1], &tables[1][dep][entryIndex2]});
+            __builtin_prefetch(&tables[0][dep][entryIndex1]);
+            __builtin_prefetch(&tables[1][dep][entryIndex2]);
             // for(size_t i{0}; i < 2; i++) {
             //     entries[dep][i] = tables[i][dep][hashIterators[i](keyString.getByte(dep))];
             // }
@@ -328,6 +330,7 @@ namespace vEB_BTree {
         std::vector<HashBucket*> correctEntries;
         size_t dep = 0;
         for(const auto& entryPair: entries) {
+            if(dep == KeySize) { break; }
             const auto correctEntry = loadDesiredEntry(key, dep, entryPair);
             if(correctEntry != NULL) {
                 correctEntries.push_back(correctEntry);
