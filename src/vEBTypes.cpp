@@ -20,4 +20,11 @@ namespace vEB_BTree {
             val = kvp.val;
         }
     }
+
+    bool KeyValPair::operator< (const KeyValPair& rhs) const {
+        if(key == rhs.key) {
+            return val < rhs.val;
+        }
+        return key < rhs.key;
+    }
 }

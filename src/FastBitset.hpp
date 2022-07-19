@@ -4,6 +4,7 @@
 #include <array>
 #include <ranges>
 #include <cassert>
+#include <iostream>
 #include "vEBTypes.hpp"
 
 //Sidenote: why are c++ unions terrible? Why is it not possible to just use it as a form of simple effectively bit casting for two different expressions of the same underlying data? Why the ridiculous and vague active member nonsense?
@@ -53,7 +54,7 @@ namespace vEB_BTree {
     void FastBitset<NumBits>::clearBigBits(size_t startBit) {
         size_t startULLong = startBit / BitsInULLong;
         size_t bitOffset = startBit % BitsInULLong; //compiler should optimize % away probably
-        ULLongType mask = (((ULLongType)1) << bitOffset) - 1; //only the lower bits are kept, so keep those at one
+        ULLongType mask = safeShiftLeft(1, bitOffset) - 1; //only the lower bits are kept, so keep those at one
         bits[startULLong] &= mask;
         for(size_t i{startULLong+1}; i < bits.size(); i++) {
             bits[i] = 0;
@@ -64,9 +65,11 @@ namespace vEB_BTree {
     void FastBitset<NumBits>::clearSmallBits(size_t startBit) {
         size_t startULLong = startBit / BitsInULLong;
         size_t bitOffset = startBit % BitsInULLong; //compiler should optimize % away probably
-        ULLongType mask = -(((ULLongType)1) << bitOffset); //only the higher bits are kept
+        ULLongType mask = ~(safeShiftLeft(1, bitOffset + 1) - 1); //only the higher bits are kept
+        // std::cout << std::dec << bits[startULLong] << " g " << bitOffset << " " << mask << " " << (safeShiftLeft(1, bitOffset + 1) - 1) << " " << startBit << " " << startULLong << std::endl;
         bits[startULLong] &= mask;
-        for(size_t i{startULLong-1}; i > 0; i--) {
+        // std::cout << std::hex << bits[startULLong] << " g2" << std::endl;
+        for(size_t i{0}; i < startULLong; i++) {
             bits[i] = 0;
         }
     }

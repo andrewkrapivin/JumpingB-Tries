@@ -96,7 +96,9 @@ namespace vEB_BTree {
     }
 
     std::array<HashBucket, 2> HashTable::loadPossibleEntries(KeyType key, size_t depth) const {
+        assert(depth<=KeySize);
         std::array<size_t, 2> hashValues{hashFunctions[0](key, depth), hashFunctions[1](key, depth)};
+        // std::cout << hashValues[0] << " " << hashValues[1] << " " << key << " " << depth << std::endl;
         return {tables[0][depth][hashValues[0]], tables[1][depth][hashValues[1]]};
     }
 
@@ -116,6 +118,8 @@ namespace vEB_BTree {
     }
     
     std::optional<HashBucket> HashTable::successorEntry(const HashBucket& entry, ByteType pos, size_t depth) const {
+        if(depth == KeySize) return {};
+        // std::cout << depth << std::endl;
         // size_t index = pos/64; //maybe move these constants out somewhere
         // uint64_t offset = pos & 63;
         // entry.childMask[index] &= ~(offset - 1);
@@ -135,8 +139,10 @@ namespace vEB_BTree {
         int successorByte = childMask.findSmallestBit();
         if(successorByte == -1) return {};
         ULLongByteString prefix{entry.smallestMember.key};
-        prefix.setByte(depth+1, successorByte);
-        return loadDesiredEntry(prefix, depth+1);
+        prefix.setByte(depth, successorByte);
+        std::optional<HashBucket> h = loadDesiredEntry(prefix, depth+1);
+        assert(h.has_value());
+        return h;
     }
 
     std::vector<std::array<HashBucket*, 2>> HashTable::loadAllEntries(KeyType key) {
@@ -165,12 +171,20 @@ namespace vEB_BTree {
     std::vector<std::array<HashBucket, 2>> HashTable::loadAllEntries(KeyType key) const {
         std::vector<std::array<HashBucket, 2>> entries;
         std::array<ModdedBasicHashFunction::Iterator, 2> hashIterators{hashFunctions[0], hashFunctions[1]};
-        ULLongByteString keyString{key};
-        entries.push_back({tables[0][0][0], tables[1][0][0]});
+        std::array<std::array<ULLongType, 2>, KeySize+1> indices;
+        indices[0] = {0, 0};
         size_t dep = 1;
+        ULLongByteString keyString{key};
         for(; dep <= KeySize; dep++) {
+            indices[dep] = {hashIterators[0](keyString.getByte(dep-1)), hashIterators[1](keyString.getByte(dep-1))};
+        }
+        // for(dep = 0; dep <= KeySize; dep++) {
+        //     __builtin_prefetch(&tables[0][dep][indices[dep][0]]);
+        //     __builtin_prefetch(&tables[1][dep][indices[dep][1]]);
+        // }
+        for(dep = 0; dep <= KeySize; dep++) {
             //Figure out something nicer to do with these arrays of size two
-            entries.push_back({tables[0][dep][hashIterators[0](keyString.getByte(dep-1))], tables[1][dep][hashIterators[1](keyString.getByte(dep-1))]});
+            entries.push_back({tables[0][dep][indices[dep][0]], tables[1][dep][indices[dep][1]]});
             // for(size_t i{0}; i < 2; i++) {
             //     entries[dep][i] = tables[i][dep][hashIterators[i](keyString.getByte(dep))];
             // }
@@ -276,7 +290,7 @@ namespace vEB_BTree {
         // return {};
     }
     
-    std::optional<KeyValPair> HashTable::successorQuery(KeyType key) const {
+    std::optional<KeyValPair> HashTable::successorQuery(KeyType key) {
         // std::array<std::array<HashBucket, 2>, KeySize+1> entries; //Fix order in hash table too cause here its opposite. Doesn't really matter there but whatever
         // std::array<unsigned char, KeySize> entriesToShuffle = std::bit_cast<std::array<unsigned char, KeySize>, KeyType>(key); //Wack this bit_cast thing is.
         // //And fix order in this for loop.
@@ -311,12 +325,12 @@ namespace vEB_BTree {
         // }
 
         auto entries = loadAllEntries(key);
-        std::vector<HashBucket> correctEntries;
+        std::vector<HashBucket*> correctEntries;
         size_t dep = 0;
         for(const auto& entryPair: entries) {
             const auto correctEntry = loadDesiredEntry(key, dep, entryPair);
-            if(correctEntry.has_value()) {
-                correctEntries.push_back(*correctEntry);
+            if(correctEntry != NULL) {
+                correctEntries.push_back(correctEntry);
             }
             else {
                 break;
@@ -324,13 +338,15 @@ namespace vEB_BTree {
             dep++;
         }
 
+        dep = correctEntries.size()-1;
         //Keeping the value of dep here is a bit sus.
         ULLongByteString keyString{key};
-        for(const auto& entry: correctEntries | std::views::reverse) {
-            auto successor = successorEntry(entry, keyString.getByte(dep), dep);
+        for(auto entry: correctEntries | std::views::reverse) {
+            auto successor = successorEntry(*entry, keyString.getByte(dep), dep);
             if(successor.has_value()) {
                 return successor->smallestMember;
             }
+            dep--;
         }
 
         return {};

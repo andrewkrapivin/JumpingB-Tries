@@ -83,7 +83,7 @@ namespace vEB_BTree {
             void insert(KeyValPair kvp);
             void deleteKey(KeyType key);
             std::optional<ValType> pointQuery(KeyType key) const;
-            std::optional<KeyValPair> successorQuery(KeyType key) const;
+            std::optional<KeyValPair> successorQuery(KeyType key);
             // std::optional<KeyValPair> predecessorQuery(KeyType key);
     };
 }
