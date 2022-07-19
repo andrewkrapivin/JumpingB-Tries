@@ -10,6 +10,10 @@ namespace vEB_BTree {
     HashBucket::HashBucket() {}
     HashBucket::HashBucket(KeyValPair kvp, size_t dep): smallestMember{kvp}, largestMember{kvp}, childMask{ULLongByteString{kvp.key}.getByte(dep)} {} //the last part works since it sets the right bit when dep < KeySize; otherwise we do not care which bit is set, just that some bit is set, and getByte would return 0, which is fine
 
+    bool HashBucket::empty() {
+        return childMask.empty();
+    }
+
     HashTable::ModdedBasicHashFunction::ModdedBasicHashFunction(size_t numBits): numBits{numBits} {
         std::random_device rd;
         std::seed_seq seed{rd(), rd(), rd(), rd(), rd()};
@@ -63,7 +67,7 @@ namespace vEB_BTree {
     HashTable::HashTable(size_t size): numBits{64ull - __builtin_clzll(size)}, sizeTables{1ull << numBits}, hashFunctions{ModdedBasicHashFunction{numBits}, ModdedBasicHashFunction{numBits}} {
         for(auto& tablePair: tables) {
             for(auto& table: tablePair) {
-                table = std::vector<HashBucket>(sizeTables);
+                table = std::vector<HashBucket>(sizeTables, EmptyBucket); //Um why did vector not default initialize here?
             }
         }
     }
@@ -72,38 +76,40 @@ namespace vEB_BTree {
         return ULLongByteString::comparePrefixes(key, entry.smallestMember.key, depth) && !entry.childMask.empty();
     }
 
-    std::array<std::reference_wrapper<HashBucket>, 2> HashTable::loadPossibleEntries(KeyType key, size_t depth) {
+    std::array<HashBucket*, 2> HashTable::loadPossibleEntries(KeyType key, size_t depth) {
         std::array<size_t, 2> hashValues{hashFunctions[0](key, depth), hashFunctions[1](key, depth)};
         // std::array<std::reference_wrapper<HashBucket>, 2> possibleEntries{tables[0][depth][hashValues[0]], tables[1][depth][hashValues[1]]};
-        return {tables[0][depth][hashValues[0]], tables[1][depth][hashValues[1]]};
+        return {&tables[0][depth][hashValues[0]], &tables[1][depth][hashValues[1]]};
     }
 
-    std::optional<std::reference_wrapper<HashBucket>> HashTable::loadDesiredEntry(KeyType key, size_t depth) {
+    HashBucket* HashTable::loadDesiredEntry(KeyType key, size_t depth) {
         return loadDesiredEntry(key, depth, loadPossibleEntries(key, depth));
     }
 
-    std::optional<std::reference_wrapper<HashBucket>> HashTable::loadDesiredEntry(KeyType key, size_t depth, std::array<std::reference_wrapper<HashBucket>, 2> entries) {
-        std::cout <<"GAMINGGGGGGGG" << std::endl;
-        for(std::reference_wrapper<HashBucket> b: entries) {
-            if(testEntry(b, key, depth)) {
+    HashBucket* HashTable::loadDesiredEntry(KeyType key, size_t depth, std::array<HashBucket*, 2> entries) {
+        if(depth == 0) {
+            
+        }
+        for(HashBucket* b: entries) {
+            if(testEntry(*b, key, depth)) {
                 return b;
             }
         }
-        return {};
+        return NULL;
     }
 
-    std::array<std::reference_wrapper<const HashBucket>, 2> HashTable::loadPossibleEntries(KeyType key, size_t depth) const {
+    std::array<HashBucket, 2> HashTable::loadPossibleEntries(KeyType key, size_t depth) const {
         std::array<size_t, 2> hashValues{hashFunctions[0](key, depth), hashFunctions[1](key, depth)};
         return {tables[0][depth][hashValues[0]], tables[1][depth][hashValues[1]]};
     }
 
-    std::optional<std::reference_wrapper<const HashBucket>> HashTable::loadDesiredEntry(KeyType key, size_t depth) const {
+    std::optional<HashBucket> HashTable::loadDesiredEntry(KeyType key, size_t depth) const {
         // std::array<size_t, 2> hashValues{hashFunctions[0](key, depth), hashFunctions[1](key, depth)};
         // std::array<std::reference_wrapper<const HashBucket>, 2> possibleEntries{tables[0][depth][hashValues[0]], tables[1][depth][hashValues[1]]};
         return loadDesiredEntry(key, depth, loadPossibleEntries(key, depth));
     }
 
-    std::optional<std::reference_wrapper<const HashBucket>> HashTable::loadDesiredEntry(KeyType key, size_t depth, std::array<std::reference_wrapper<const HashBucket>, 2> entries) const {
+    std::optional<HashBucket> HashTable::loadDesiredEntry(KeyType key, size_t depth, std::array<HashBucket, 2> entries) const {
         for(const HashBucket& b: entries) {
             if(testEntry(b, key, depth)) {
                 return b;
@@ -112,7 +118,7 @@ namespace vEB_BTree {
         return {};
     }
     
-    std::optional<std::reference_wrapper<const HashBucket>> HashTable::successorEntry(const HashBucket& entry, ByteType pos, size_t depth) const {
+    std::optional<HashBucket> HashTable::successorEntry(const HashBucket& entry, ByteType pos, size_t depth) const {
         // size_t index = pos/64; //maybe move these constants out somewhere
         // uint64_t offset = pos & 63;
         // entry.childMask[index] &= ~(offset - 1);
@@ -136,31 +142,31 @@ namespace vEB_BTree {
         return loadDesiredEntry(prefix, depth+1);
     }
 
-    std::vector<std::array<std::reference_wrapper<HashBucket>, 2>> HashTable::loadAllEntries(KeyType key) {
-        std::vector<std::array<std::reference_wrapper<HashBucket>, 2>> entries;
+    std::vector<std::array<HashBucket*, 2>> HashTable::loadAllEntries(KeyType key) {
+        std::vector<std::array<HashBucket*, 2>> entries;
         std::array<ModdedBasicHashFunction::Iterator, 2> hashIterators{hashFunctions[0], hashFunctions[1]};
         ULLongByteString keyString{key};
-        entries.push_back({tables[0][0][0], tables[1][0][0]});
+        entries.push_back({&tables[0][0][0], &tables[1][0][0]});
         size_t dep = 1;
         for(; dep <= KeySize; dep++) {
             //Figure out something nicer to do with these arrays of size two
             size_t entryIndex1 = hashIterators[0](keyString.getByte(dep));
             size_t entryIndex2 = hashIterators[1](keyString.getByte(dep));
-            std::cout << "entryIndex1: " << entryIndex1 << ", 2: " << entryIndex2 << std::endl;
+            // std::cout << "entryIndex1: " << entryIndex1 << ", 2: " << entryIndex2 << std::endl;
             assert(dep < tables[0].size() && entryIndex1 < tables[0][dep].size() && entryIndex2 < tables[1][dep].size());
-            entries.push_back({tables[0][dep][entryIndex1], tables[1][dep][entryIndex2]});
+            entries.push_back({&tables[0][dep][entryIndex1], &tables[1][dep][entryIndex2]});
             // for(size_t i{0}; i < 2; i++) {
             //     entries[dep][i] = tables[i][dep][hashIterators[i](keyString.getByte(dep))];
             // }
         }
-        for(size_t i{0}; i <= KeySize; i++) {
-            std::cout << entries[i][0].get().smallestMember.key << " " << entries[i][1].get().smallestMember.key << std::endl;
-        }
+        // for(size_t i{0}; i <= KeySize; i++) {
+        //     std::cout << entries[i][0]-smallestMember.key << " " << entries[i][1].get().smallestMember.key << std::endl;
+        // }
         return entries;
     }
 
-    std::vector<std::array<std::reference_wrapper<const HashBucket>, 2>> HashTable::loadAllEntries(KeyType key) const {
-        std::vector<std::array<std::reference_wrapper<const HashBucket>, 2>> entries;
+    std::vector<std::array<HashBucket, 2>> HashTable::loadAllEntries(KeyType key) const {
+        std::vector<std::array<HashBucket, 2>> entries;
         std::array<ModdedBasicHashFunction::Iterator, 2> hashIterators{hashFunctions[0], hashFunctions[1]};
         ULLongByteString keyString{key};
         entries.push_back({tables[0][0][0], tables[1][0][0]});
@@ -183,39 +189,62 @@ namespace vEB_BTree {
     }
 
     void HashTable::cuckooInsertEntry(KeyValPair kvp, size_t depth) {
+        // std::cout << "Creating cuckoo entry, depth: " << depth << std::endl;
         HashBucket entry{kvp, depth};
+        assert(!entry.childMask.empty());
         size_t parity = 0;
-        HashBucket& entryToInsert = tables[parity][depth][hashFunctions[parity](entry.smallestMember.key, depth)];
-        while(!entryToInsert.childMask.empty()) {
-            std::swap(entry, entryToInsert); //I think this works to swap the value that entry holds and entryToInsert holds, even though one is a ref and one is not
+        // HashBucket& entryToInsert = tables[parity][depth][hashFunctions[parity](entry.smallestMember.key, depth)];
+        // if(depth == 0) {
+        //     assert(hashFunctions[parity](entry.smallestMember.key, depth) == 0);
+        // }
+        // std::swap(entry, entryToInsert); //I think this works to swap the value that entry holds and entryToInsert holds, even though one is a ref and one is not
+        // while(!entry.childMask.empty()) {
+        //     std::cout << "NANDE SUKA" << std::endl;
+        //     assert(!entryToInsert.childMask.empty());
+        //     if(depth == 0) {
+        //         assert(!tables[0][0][0].childMask.empty());
+        //         return;
+        //     }
+        //     parity ^= 1;
+        //     entryToInsert = tables[parity][depth][hashFunctions[parity](entry.smallestMember.key, depth)];
+        //     std::swap(entry, entryToInsert);
+        // }
+        do {
+            HashBucket& entryToInsert = tables[parity][depth][hashFunctions[parity](entry.smallestMember.key, depth)];
+            std::cout << hashFunctions[parity](entry.smallestMember.key, depth) << std::endl;
+            std::swap(entry, entryToInsert);
             parity ^= 1;
-            entryToInsert = tables[parity][depth][hashFunctions[parity](entry.smallestMember.key, depth)];
-        }
+        } while(!entry.empty());
     }
 
-    void HashTable::insertKeyToEntry(HashBucket& entry, KeyValPair kvp, size_t depth) {
-        entry.smallestMember.setIfMin(kvp);
-        entry.largestMember.setIfMax(kvp);
-        entry.childMask.setBit(ULLongByteString(kvp.key).getByte(depth));
+    void HashTable::insertKeyToEntry(HashBucket* entry, KeyValPair kvp, size_t depth) {
+        entry->smallestMember.setIfMin(kvp);
+        entry->largestMember.setIfMax(kvp);
+        entry->childMask.setBit(ULLongByteString(kvp.key).getByte(depth));
     }
 
+    size_t count = 0;
     void HashTable::insert(KeyValPair kvp) {
-        std::vector<std::array<std::reference_wrapper<HashBucket>, 2>> entries = loadAllEntries(kvp.key);
+        std::vector<std::array<HashBucket*, 2>> entries = loadAllEntries(kvp.key);
         assert(entries.size() == KeySize+1);
         // std::vector<HashBucket> correctEntries;
         size_t dep = 0;
         for(auto& entryPair: entries) {
-            assert(entryPair[0].get().smallestMember.key == 0 || entryPair[0].get().smallestMember.key != 0);
             // std::cout << entryPair[0].get().smallestMember.key << " " << entryPair[1].get().smallestMember.key << std::endl;
-            std::optional<std::reference_wrapper<HashBucket>> correctEntry = loadDesiredEntry(kvp.key, dep, entryPair);
-            if(correctEntry.has_value()) {
+            HashBucket* correctEntry = loadDesiredEntry(kvp.key, dep, entryPair);
+            if(correctEntry == NULL) {
+                assert(dep > 0 || count == 0);
                 cuckooInsertEntry(kvp, dep);
+                // if(dep == 0) {
+                //     std::cout << tables[0][0][0].childMask.numBitsSet() << std::endl;
+                // }
             }
             else {
-                insertKeyToEntry(*correctEntry, kvp, dep);
+                insertKeyToEntry(correctEntry, kvp, dep);
             }
             dep++;
         }
+        count ++;
     }
     
     std::optional<ValType> HashTable::pointQuery(KeyType key) const {
@@ -233,7 +262,7 @@ namespace vEB_BTree {
         // return {};
         const auto& correctEntry = loadDesiredEntry(key, KeySize);
         if(correctEntry.has_value()) {
-            return correctEntry->get().smallestMember.val;
+            return correctEntry->smallestMember.val;
         }
         return {};
         // auto entries = loadAllEntries(key);
@@ -303,7 +332,7 @@ namespace vEB_BTree {
         for(const auto& entry: correctEntries | std::views::reverse) {
             auto successor = successorEntry(entry, keyString.getByte(dep), dep);
             if(successor.has_value()) {
-                return successor->get().smallestMember;
+                return successor->smallestMember;
             }
         }
 

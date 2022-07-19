@@ -25,15 +25,13 @@ int main(int argc, char** argv){
         randomList.emplace_back(dist(generator), dist(generator));
     }
 
-    HashTable vEBTree{testSize*10ull};
+    HashTable vEBTree{testSize*2ull};
 
     BenchHelper bench;
 
     for(size_t i{0}; i < testSize; i++) {
         vEBTree.insert(randomList[i]);
     }
-
-    cout << "GAMING" << endl;
 
     for(size_t i{0}; i < testSize; i++) {
         auto queryResult = vEBTree.pointQuery(randomList[i].key);

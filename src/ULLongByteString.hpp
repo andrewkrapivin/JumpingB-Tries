@@ -2,27 +2,40 @@
 #define ULLongByteString_HPP
 
 #include "vEBTypes.hpp"
+#include <cassert>
 
 namespace vEB_BTree {
     class ULLongByteString {
         private:
             ULLongType x;
-            static constexpr ULLongType byteToBit(size_t byte) {return 8*byte;}
+            static constexpr ULLongType byteToBit(size_t byte) {return 8*(BytesInULLong-byte);}
             static constexpr ULLongType getByteMask(size_t lowByte, size_t highByte) { //sets bits to one corresponding to byte range [lowByte, highByte)
-                return (((ULLongType)1) << byteToBit(highByte)) - (((ULLongType)1ull) << byteToBit(lowByte));
+                return safeShiftLeft(((ULLongType)1ull), byteToBit(lowByte)) - safeShiftLeft(((ULLongType)1), byteToBit(highByte));
+            }
+            static constexpr ULLongType safeShiftLeft(ULLongType num, ULLongType shiftBy) {
+                if(shiftBy >= 64) {
+                    return 0;
+                }
+                return num << shiftBy;
+            }
+            static constexpr ULLongType safeShiftRight(ULLongType num, ULLongType shiftBy) {
+                if(shiftBy >= 64) {
+                    return 0;
+                }
+                return num >> shiftBy;
             }
 
         public:
             constexpr ULLongByteString(ULLongType x): x(x) {}
 
-            //Keeps only the bytes [0, endByte)
+            //Keeps only the bytes [0, endByte) in order
             void constexpr keepBytesUntil(size_t endByte) {
-                x &= -(((ULLongType)1ull) << byteToBit(endByte));
+                x &= -safeShiftLeft(((ULLongType)1ull), byteToBit(endByte));
             }
 
             //Keeps only the bytes [endByte, BytesInULLong)
             void constexpr keepBytesStartingWith(size_t startByte) {
-                x &= (((ULLongType)1ull) << byteToBit(startByte)) - 1;
+                x &= safeShiftLeft((ULLongType)1ull, byteToBit(startByte)) - 1;
             }
 
             constexpr operator ULLongType&() {return x;}
@@ -30,7 +43,7 @@ namespace vEB_BTree {
 
             ByteType constexpr getByte(size_t pos) {
                 ULLongType mask = getByteMask(pos, pos+1);
-                return (x & mask) >> byteToBit(pos);
+                return safeShiftRight((x & mask), byteToBit(pos));
             }
 
             ULLongType constexpr getPrefix(size_t numBytes) {
@@ -41,7 +54,7 @@ namespace vEB_BTree {
 
             void constexpr setByte(size_t pos, ByteType byte) {
                 ULLongType mask = ~getByteMask(byte, byte+1);
-                x = (x & mask) | (((ULLongType)byte) << byteToBit(pos));
+                x = (x & mask) | safeShiftLeft(((ULLongType)byte), byteToBit(pos));
             }
 
             static constexpr ULLongType getPrefix(ULLongType x, size_t numBytes) {
@@ -49,6 +62,9 @@ namespace vEB_BTree {
             }
 
             static constexpr bool comparePrefixes(ULLongType x, ULLongType y, size_t sizePrefix) {
+                if(sizePrefix == 0) {
+                    assert(getPrefix(x, sizePrefix) == getPrefix(y, sizePrefix) && getPrefix(y, sizePrefix) == 0);
+                }
                 return getPrefix(x, sizePrefix) == getPrefix(y, sizePrefix);
             }
 

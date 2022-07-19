@@ -3,6 +3,7 @@
 
 #include <array>
 #include <ranges>
+#include <cassert>
 #include "vEBTypes.hpp"
 
 //Sidenote: why are c++ unions terrible? Why is it not possible to just use it as a form of simple effectively bit casting for two different expressions of the same underlying data? Why the ridiculous and vague active member nonsense?
@@ -26,14 +27,27 @@ namespace vEB_BTree {
             void setBit(size_t bit);
             void clearBit(size_t bit);
             bool getBit(size_t pos) const;
+            size_t numBitsSet() const;
 
     };
 
     template<size_t NumBits>
-    FastBitset<NumBits>::FastBitset() {}
+    FastBitset<NumBits>::FastBitset() {
+        for(ULLongType& l: bits) {
+            l = 0;
+            // assert(l == 0);
+        }
+    }
 
     template<size_t NumBits>
-    FastBitset<NumBits>::FastBitset(size_t bitToSet) {setBit(bitToSet);}
+    FastBitset<NumBits>::FastBitset(size_t bitToSet) {
+        for(ULLongType& l: bits) {
+            l = 0;
+            // assert(l == 0);
+        }
+        setBit(bitToSet);
+        assert(!empty());
+    }
     
     template<size_t NumBits>
     void FastBitset<NumBits>::clearBigBits(size_t startBit) {
@@ -114,6 +128,15 @@ namespace vEB_BTree {
         size_t posULLong = pos / BitsInULLong;
         size_t bitOffset = pos % BitsInULLong;
         return bits[posULLong] & (((ULLongType)1) << bitOffset);
+    }
+
+    template<size_t NumBits>
+    size_t FastBitset<NumBits>::numBitsSet() const {
+        size_t num = 0;
+        for(ULLongType l: bits) {
+            num += __builtin_popcountll(l);
+        }
+        return num;
     }
 }
 
