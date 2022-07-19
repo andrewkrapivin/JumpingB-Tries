@@ -3,6 +3,7 @@
 
 #include "vEBTypes.hpp"
 #include <cassert>
+#include <iostream>
 
 namespace vEB_BTree {
     class ULLongByteString {
@@ -43,7 +44,8 @@ namespace vEB_BTree {
 
             ByteType constexpr getByte(size_t pos) {
                 ULLongType mask = getByteMask(pos, pos+1);
-                return safeShiftRight((x & mask), byteToBit(pos));
+                // std::cout << std::hex << mask << std::endl;
+                return safeShiftRight((x & mask), byteToBit(pos+1));
             }
 
             ULLongType constexpr getPrefix(size_t numBytes) {

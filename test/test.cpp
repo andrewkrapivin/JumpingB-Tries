@@ -25,7 +25,11 @@ int main(int argc, char** argv){
         randomList.emplace_back(dist(generator), dist(generator));
     }
 
-    HashTable vEBTree{testSize*2ull};
+    ULLongByteString x{0x123456789abcdef0};
+    cout << hex << x.getPrefix(2) << endl;
+    cout << hex << ((ULLongType)x.getByte(0)) << endl;
+
+    HashTable vEBTree{testSize*3ull};
 
     BenchHelper bench;
 

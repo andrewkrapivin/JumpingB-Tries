@@ -40,9 +40,9 @@ namespace vEB_BTree {
     size_t HashTable::ModdedBasicHashFunction::operator() (KeyType key, size_t depth) const {
         size_t res=0;
 
-        std::array<unsigned char, KeySize> entriesToShuffle = std::bit_cast<std::array<unsigned char, KeySize>, KeyType>(key); //Wack this bit_cast thing is.
+        ULLongByteString keyString{key};
         for(size_t i{0}; i < depth; i++) {
-            res ^= shuffleBits[i][entriesToShuffle[i]];
+            res ^= shuffleBits[i][keyString.getByte(i)];
         }
         
         return res;
@@ -87,9 +87,6 @@ namespace vEB_BTree {
     }
 
     HashBucket* HashTable::loadDesiredEntry(KeyType key, size_t depth, std::array<HashBucket*, 2> entries) {
-        if(depth == 0) {
-            
-        }
         for(HashBucket* b: entries) {
             if(testEntry(*b, key, depth)) {
                 return b;
@@ -150,8 +147,8 @@ namespace vEB_BTree {
         size_t dep = 1;
         for(; dep <= KeySize; dep++) {
             //Figure out something nicer to do with these arrays of size two
-            size_t entryIndex1 = hashIterators[0](keyString.getByte(dep));
-            size_t entryIndex2 = hashIterators[1](keyString.getByte(dep));
+            size_t entryIndex1 = hashIterators[0](keyString.getByte(dep-1));
+            size_t entryIndex2 = hashIterators[1](keyString.getByte(dep-1));
             // std::cout << "entryIndex1: " << entryIndex1 << ", 2: " << entryIndex2 << std::endl;
             assert(dep < tables[0].size() && entryIndex1 < tables[0][dep].size() && entryIndex2 < tables[1][dep].size());
             entries.push_back({&tables[0][dep][entryIndex1], &tables[1][dep][entryIndex2]});
@@ -173,7 +170,7 @@ namespace vEB_BTree {
         size_t dep = 1;
         for(; dep <= KeySize; dep++) {
             //Figure out something nicer to do with these arrays of size two
-            entries.push_back({tables[0][dep][hashIterators[0](keyString.getByte(dep))], tables[1][dep][hashIterators[1](keyString.getByte(dep))]});
+            entries.push_back({tables[0][dep][hashIterators[0](keyString.getByte(dep-1))], tables[1][dep][hashIterators[1](keyString.getByte(dep-1))]});
             // for(size_t i{0}; i < 2; i++) {
             //     entries[dep][i] = tables[i][dep][hashIterators[i](keyString.getByte(dep))];
             // }
@@ -211,7 +208,7 @@ namespace vEB_BTree {
         // }
         do {
             HashBucket& entryToInsert = tables[parity][depth][hashFunctions[parity](entry.smallestMember.key, depth)];
-            std::cout << hashFunctions[parity](entry.smallestMember.key, depth) << std::endl;
+            // std::cout << hashFunctions[parity](entry.smallestMember.key, depth) << " " << depth << " " << ((ULLongByteString)entry.smallestMember.key).getPrefix(depth) << " " << ((ULLongType)((ULLongByteString)entry.smallestMember.key).getByte(depth-1)) << std::endl;
             std::swap(entry, entryToInsert);
             parity ^= 1;
         } while(!entry.empty());
