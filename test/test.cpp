@@ -31,7 +31,7 @@ int main(int argc, char** argv){
     // cout << hex << x.getPrefix(2) << endl;
     // cout << hex << ((ULLongType)x.getByte(0)) << endl;
 
-    HashTable vEBTree{testSize*3ull};
+    HashTable vEBTree{testSize*4ull/3};
 
     BenchHelper bench;
 

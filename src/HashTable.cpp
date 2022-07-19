@@ -96,9 +96,11 @@ namespace vEB_BTree {
     }
 
     std::array<HashBucket, 2> HashTable::loadPossibleEntries(KeyType key, size_t depth) const {
-        assert(depth<=KeySize);
+        // assert(depth<=KeySize);
         std::array<size_t, 2> hashValues{hashFunctions[0](key, depth), hashFunctions[1](key, depth)};
         // std::cout << hashValues[0] << " " << hashValues[1] << " " << key << " " << depth << std::endl;
+        __builtin_prefetch(&tables[0][depth][hashValues[0]]);
+        __builtin_prefetch(&tables[1][depth][hashValues[1]]);
         return {tables[0][depth][hashValues[0]], tables[1][depth][hashValues[1]]};
     }
 
@@ -140,9 +142,9 @@ namespace vEB_BTree {
         if(successorByte == -1) return {};
         ULLongByteString prefix{entry.smallestMember.key};
         prefix.setByte(depth, successorByte);
-        std::optional<HashBucket> h = loadDesiredEntry(prefix, depth+1);
-        assert(h.has_value());
-        return h;
+        return loadDesiredEntry(prefix, depth+1);
+        // return h;
+        // return {};
     }
 
     std::vector<std::array<HashBucket*, 2>> HashTable::loadAllEntries(KeyType key) {

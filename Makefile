@@ -1,6 +1,6 @@
-CXX = g++-11
+CXX = g++
 #CXXFLAGS = -MMD -MP -pthread -march=native -std=c++20 -O0 -ggdb -Wall -W
-CXXFLAGS = -MMD -MP -pthread -march=native -std=c++20 -O3 -Wall -W
+CXXFLAGS = -MMD -MP -pthread -march=native -std=c++20 -Ofast -Wall -W
  
 SRCDIR = src
 OBJDIR = bin
