@@ -10,6 +10,7 @@
 #include "FastBitset.hpp"
 #include "ULLongByteString.hpp"
 #include "vEBTypes.hpp"
+#include "HugePageAllocator.hpp"
 
 //For now designing this hash table to be a Cuckoo Hash Table for 64-bit keys. Should be just one "cache miss" for point query and two for successor query
 
@@ -59,7 +60,7 @@ namespace vEB_BTree {
             size_t numBits;
             size_t sizeTables;
             std::array<ModdedBasicHashFunction, 2> hashFunctions;
-            std::array<std::array<std::vector<HashBucket>, KeySize+1>, 2> tables; //Clearly this is inneficient because of several different things, like being very space inneficient, esp since the earlier layers don't use much, but well this approach is rather space inneficient anyways so whatever
+            std::array<std::array<std::vector<HashBucket, thp_allocator<HashBucket>>, KeySize+1>, 2> tables; //Clearly this is inneficient because of several different things, like being very space inneficient, esp since the earlier layers don't use much, but well this approach is rather space inneficient anyways so whatever
             //But well at least compute the hash exactly once & don't need to worry about doing anything custom anymore
             bool testEntry(const HashBucket& entry, KeyType key, size_t depth) const; //tests if entry actually holds the key
             std::array<HashBucket*, 2> loadPossibleEntries(KeyType key, size_t depth);

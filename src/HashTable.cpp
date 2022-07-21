@@ -67,7 +67,7 @@ namespace vEB_BTree {
     HashTable::HashTable(size_t size): numBits{64ull - __builtin_clzll(size)}, sizeTables{1ull << numBits}, hashFunctions{ModdedBasicHashFunction{numBits}, ModdedBasicHashFunction{numBits}} {
         for(auto& tablePair: tables) {
             for(auto& table: tablePair) {
-                table = std::vector<HashBucket>(sizeTables, EmptyBucket); //Um why did vector not default initialize here?
+                table = std::vector<HashBucket, thp_allocator<HashBucket>>(sizeTables, EmptyBucket); //Um why did vector not default initialize here?
             }
         }
     }
