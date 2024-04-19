@@ -1,4 +1,4 @@
-# vEB-BTrees
+# Jumping B-Tries
 
 This was (is?) a project aiming to try and get a really fast set by combining the ideas of B trees and VEB-trees, by having a higher branching factor on a VEB-tree.
 VEB-trees have a pretty small depth, but, since they are implemented with hash tables, all but the last few steps are a cache miss, meaning that lots of bandwidth is just wasted (assuming the CPU cannot look ahead beyond the entire tree search).
